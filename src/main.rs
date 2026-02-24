@@ -5,14 +5,15 @@ mod components {
     pub mod home;
     pub mod settings;
     pub mod nav_layout;
-    pub mod market;
+}
+mod config {
+    pub mod app_config;
 }
 
 // 2. Bring the component into scope
 use components::home::Home;
 use components::settings::Settings;
 use components::nav_layout::NavLayout;
-use components::market::Market;
 
 const FAVICON: Asset = asset!("/assets/favicon.ico");
 const MAIN_CSS: Asset = asset!("/assets/main.css");
@@ -92,6 +93,4 @@ enum Route {
     Home {},
     #[route("/settings")]
     Settings {},
-    #[route("/market")]
-    Market {},
 }

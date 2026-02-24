@@ -13,7 +13,6 @@ pub fn NavLayout() -> Element {
             // Your bottom nav code here...
             nav { class: "h-20 border-t flex justify-around items-center",
                  Link { to: Route::Home {}, "Home" }
-                 Link { to: Route::Market {}, "Market" }
                  Link { to: Route::Settings {}, "Settings" }
             }
         }
