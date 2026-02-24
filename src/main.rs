@@ -41,15 +41,15 @@ pub fn Passcode() -> Element {
     const PASSCODE: &str = "123456";
     // 2. Logic to determine what message to show
     let message = match input_text().as_str() {
-        "" => "Please enter the passcode that developer shared",
-        PASSCODE => "Success! Access Granted ✅",
-        _ => "Incorrect passcode ❌",
+        "" => "开机密码为预设密码",
+        PASSCODE => "密码匹配 ✅",
+        _ => "密码不匹配 ❌",
     };
     let nav = use_navigator();
 
     rsx! {
         div { id: "passcode", class: "p-8 flex flex-col gap-4",
-            label { "Enter Passcode to Unlock:" }
+            label { "请输入开机密码" }
             input {
                 class: "border p-2 rounded",
                 r#type: "text",
@@ -74,7 +74,7 @@ pub fn Passcode() -> Element {
                     onclick: move |_| {
                         nav.push(Route::Home {});
                     },
-                    "Start Application"
+                    "开机"
                 }
             }
         }

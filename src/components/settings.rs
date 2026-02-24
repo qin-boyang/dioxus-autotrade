@@ -8,8 +8,8 @@ pub fn Settings() -> Element {
     rsx! {
         div { class: "flex flex-col gap-8 p-4",
             header {
-                h1 { class: "text-2xl font-bold", "Settings" }
-                p { class: "text-gray-300", "Configure your Binance keys (Please STOP all trades)" }
+                h1 { class: "text-2xl font-bold", "设置" }
+                p { class: "text-gray-300", "币安的配置 (修改前必须关掉交易机器人)" }
             }
 
             section { class: "flex flex-col gap-4 bg-black p-6 rounded-xl border",

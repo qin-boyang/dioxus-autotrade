@@ -64,12 +64,12 @@ pub fn Home() -> Element {
 
         div { class: "flex flex-col gap-8 p-4",
             header {
-                h1 { class: "text-2xl font-bold", "Home" }
-                p { class: "text-gray-300", "Binance Auto Trade Bot" }
+                h1 { class: "text-2xl font-bold", "首页" }
+                p { class: "text-gray-300", "币安交易机器人" }
             }
 
             section { class: "flex flex-col gap-4 bg-black p-6 rounded-xl border",
-                p { "Current USDT Balance: {balance}" }
+                p { "USDT 余额: {balance}" }
                 button {
                     class: "bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-colors",
                     onclick: move |_| async move {
@@ -77,7 +77,7 @@ pub fn Home() -> Element {
                             balance.set(new_balance);
                         }
                     },
-                    "Refresh Balance"
+                    "刷新 USDT 余额"
                 }
             }
         }
