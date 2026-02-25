@@ -53,7 +53,7 @@ pub fn Passcode() -> Element {
             input {
                 class: "border p-2 rounded",
                 r#type: "text",
-                placeholder: PASSCODE,
+                placeholder: "最简单的6位密码",
                 // 3. Bind the value and update the signal on change
                 value: "{input_text}",
                 oninput: move |evt| input_text.set(evt.value())
