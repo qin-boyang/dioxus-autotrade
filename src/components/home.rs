@@ -36,7 +36,7 @@ fn sign_request(query: &str, secret: &str) -> String {
     mac.update(query.as_bytes());
     hex::encode(mac.finalize().into_bytes())
 }
-async fn get_usdt_balance() -> Result<String, Box<dyn std::error::Error>> {
+async fn get_usdt_balance() -> Result<(String, String, String), Box<dyn std::error::Error>> {
     println!("🦀 Getting USDT balance...");
 
     let app_config = CONFIG.read();
@@ -71,8 +71,15 @@ async fn get_usdt_balance() -> Result<String, Box<dyn std::error::Error>> {
         .find(|b| b.asset == "USDT")
         .map(|b| b.free.clone())
         .unwrap_or_else(|| "0.0".to_string());
-
-    Ok(usdt)
+    let btc = account.balances.iter()
+        .find(|b| b.asset == "BTC")
+        .map(|b| b.free.clone())
+        .unwrap_or_else(|| "0.0".to_string());
+    let eth = account.balances.iter()
+        .find(|b| b.asset == "ETH")
+        .map(|b| b.free.clone())
+        .unwrap_or_else(|| "0.0".to_string());
+    Ok((usdt, btc, eth))
 }
 fn get_ticker_price(mut btc_price: Signal<String>, mut eth_price: Signal<String>) {
     let _price_task = use_coroutine(move |_rx: UnboundedReceiver<()>| {
@@ -104,7 +111,9 @@ fn get_ticker_price(mut btc_price: Signal<String>, mut eth_price: Signal<String>
 // UI Component
 #[allow(non_snake_case)]
 pub fn Home() -> Element {
-    let mut balance = use_signal(|| "-0.00".to_string());
+    let mut usdt_balance = use_signal(|| "-0.00".to_string());
+    let mut btc_balance = use_signal(|| "-0.00".to_string());
+    let mut eth_balance = use_signal(|| "-0.00".to_string());
     let btc_price = use_signal(|| "-0.00".to_string());
     let eth_price = use_signal(|| "-0.00".to_string());
 
@@ -129,15 +138,36 @@ pub fn Home() -> Element {
                 }
             }
             section { class: "flex flex-col gap-4 bg-black p-6 rounded-xl border",
-                p { "USDT 余额: {balance}" }
+                p { "USDT 余额: {usdt_balance}" }
+                p { "BTC 余额: {btc_balance}" }
+                p { "ETH 余额: {eth_balance}" }
                 button {
                     class: "bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-colors",
                     onclick: move |_| async move {
                         if let Ok(new_balance) = get_usdt_balance().await {
-                            balance.set(new_balance);
+                            usdt_balance.set(new_balance.0);
+                            btc_balance.set(new_balance.1);
+                            eth_balance.set(new_balance.2);
                         }
                     },
-                    "刷新 USDT 余额"
+                    "刷新 USDT BTC ETH 余额"
+                }
+            }
+            section { class: "flex flex-col gap-4 bg-black p-6 rounded-xl border",
+                p { "自动成交规则：当价格低于XXX 自动买入BTC" }
+                button{
+                    class: "bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-colors",
+                    onclick: move |_| async move {
+                        println!("开始自动买入BTC");
+                    },
+                    "开始自动买入BTC"
+                }
+                button{
+                    class: "bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-colors",
+                    onclick: move |_| async move {
+                        println!("开始自动买入BTC");
+                    },
+                    "停止自动买入BTC"
                 }
             }
         }
