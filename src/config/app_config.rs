@@ -11,5 +11,5 @@ pub struct AppConfig {
 pub static CONFIG: GlobalSignal<AppConfig> = Signal::global(|| AppConfig {
     base_url: "https://testnet.binance.vision".to_string(),
     api_key: "9Up87GEIzsfmHhZXmUmMz7rNynChodTx5mv8Z7X21vMDqpK0RXqyAk2nNmdgqNgZ".to_string(),
-    api_secret: "6JZxkyfRBRFBB5V8JpDuJGDLJIacoUQ1adlda0cjfhXJgXQDPByLPsXJFvj5cpqQ".to_string(),
+    api_secret: "6JZxkyfRBRFBB5V8JpDuJGDLJIacoUQ1adlda0cjfhXJgXQDPBylPsXJFvj5cpqQ".to_string(),
 });
