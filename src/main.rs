@@ -10,6 +10,14 @@ mod config {
     pub mod app_config;
 }
 
+mod model {
+    pub mod sign_signature;
+    pub mod buy_btc;
+    pub mod sell_btc;
+    pub mod get_balance;
+    pub mod get_ticker_price;
+}
+
 // 2. Bring the component into scope
 use components::home::Home;
 use components::settings::Settings;

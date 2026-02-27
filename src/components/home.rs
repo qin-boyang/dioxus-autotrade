@@ -1,34 +1,12 @@
 use dioxus::prelude::*;
-use reqwest::header::{HeaderMap, HeaderValue};
-use serde::{Deserialize};
-use hmac::{Hmac, Mac};
-use sha2::Sha256;
-use std::time::{SystemTime, UNIX_EPOCH};
-use futures_util::StreamExt;
-use tokio_tungstenite::{connect_async, tungstenite::protocol::Message};
-use crate::config::app_config::CONFIG;
 
-type HmacSha256 = Hmac<Sha256>;
-
-#[derive(Deserialize, Debug)]
-struct AccountInfo {
-    balances: Vec<AssetBalance>,
-}
-
-#[derive(Deserialize, Debug, Clone)]
-struct AssetBalance {
-    asset: String,
-    free: String,
-}
+use crate::model::buy_btc::buy_btc_market;
+use crate::model::sell_btc::sell_btc_market;
+use crate::model::get_balance::get_balances;
+use crate::model::get_ticker_price::get_ticker_price;
 
 // 币安行情数据结构
-#[derive(Deserialize, Debug)]
-struct PriceTicker {
-    #[serde(rename = "s")]
-    symbol: String,
-    #[serde(rename = "c")]
-    price: String,
-}
+
 
 #[derive(Default)]
 struct Order {
@@ -38,183 +16,31 @@ struct Order {
     sell_quantity: String,
 }
 
-/// Helper to sign requests for Binance
-fn sign_request(query: &str, secret: &str) -> String {
-    let mut mac = HmacSha256::new_from_slice(secret.as_bytes()).unwrap();
-    mac.update(query.as_bytes());
-    hex::encode(mac.finalize().into_bytes())
-}
-async fn get_balances() -> Result<(String, String, String), Box<dyn std::error::Error>> {
-    println!("🦀 Getting USDT balance...");
-
-    let app_config = CONFIG.read();
-
-    println!("🦀 base_url: {}", app_config.base_url);
-    println!("🦀 api_key: {}", app_config.api_key);
-    println!("🦀 api_secret: {}", app_config.api_secret);
-
-    let client = reqwest::Client::new();
-    let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
-    let query = format!("timestamp={}", timestamp);
-    let signature = sign_request(&query, &app_config.api_secret);
-
-    let url = format!("{}/api/v3/account?{}&signature={}", &app_config.base_url, query, signature);
-    println!("🦀 url: {}", url);
-    let mut headers = HeaderMap::new();
-    headers.insert("X-MBX-APIKEY", HeaderValue::from_str(&app_config.api_key).unwrap());
-    println!("🦀 Looking into headers {:?}", headers);
-    let res = client.get(url).headers(headers).send().await?;
-    println!("🦀 Status: {}", res.status());
-
-    // Check if the status is a success (200-299)
-    if !&res.status().is_success() {
-        let error_text = &res.text().await?;
-        println!("❌ API Error Body: {}", error_text);
-        return Err(format!("Binance API Error: ").into());
-    }
-    let account: AccountInfo = res.json().await?;
-    println!("🦀 AccountInfo: {:?}", account);
-
-    let usdt = account.balances.iter()
-        .find(|b| b.asset == "USDT")
-        .map(|b| b.free.clone())
-        .unwrap_or_else(|| "0.0".to_string());
-    let btc = account.balances.iter()
-        .find(|b| b.asset == "BTC")
-        .map(|b| b.free.clone())
-        .unwrap_or_else(|| "0.0".to_string());
-    let eth = account.balances.iter()
-        .find(|b| b.asset == "ETH")
-        .map(|b| b.free.clone())
-        .unwrap_or_else(|| "0.0".to_string());
-    Ok((usdt, btc, eth))
-}
-async fn buy_btc_market(quote_order_qty: &str) -> Result<(), Box<dyn std::error::Error>> {
-    println!("🦀 Placing Market Buy Order for BTC...");
-
-    let app_config = CONFIG.read();
-    let client = reqwest::Client::new();
-
-    // 1. 準備參數 (市價單通常建議使用 quoteOrderQty，即你想花多少 USDT)
-    let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
-    let query = format!(
-        "symbol=BTCUSDT&side=BUY&type=MARKET&quoteOrderQty={}&timestamp={}",
-        quote_order_qty, timestamp
-    );
-
-    // 2. 簽名
-    let signature = sign_request(&query, &app_config.api_secret);
-    let url = format!("{}/api/v3/order?{}&signature={}", &app_config.base_url, query, signature);
-
-    // 3. 設置 Header
-    let mut headers = HeaderMap::new();
-    headers.insert("X-MBX-APIKEY", HeaderValue::from_str(&app_config.api_key)?);
-
-    // 4. 發送 POST 請求 (注意下單是 POST)
-    let res = client.post(url)
-        .headers(headers)
-        .send()
-        .await?;
-
-    // 5. 處理結果
-    if !res.status().is_success() {
-        let error_text = res.text().await?;
-        println!("❌ Order Failed: {}", error_text);
-        return Err(format!("Binance Buy Error: {}", error_text).into());
-    }
-
-    let response_json: serde_json::Value = res.json().await?;
-    println!("✅ Order Success! Details: {:?}", response_json);
-
-    Ok(())
-}
-async fn sell_btc_market(quantity: &str) -> Result<(), Box<dyn std::error::Error>> {
-    println!("🦀 Placing Market Sell Order for BTC...");
-
-    let app_config = CONFIG.read();
-    let client = reqwest::Client::new();
-
-    // 1. 准备参数
-    // 注意：卖出通常指定 quantity (BTC 的数量)
-    // 如果你想按成交额卖出，可以将 quantity 替换为 quoteOrderQty
-    let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
-    let query = format!(
-        "symbol=BTCUSDT&side=SELL&type=MARKET&quantity={}&timestamp={}",
-        quantity, timestamp
-    );
-
-    // 2. 签名 (逻辑与买入一致)
-    let signature = sign_request(&query, &app_config.api_secret);
-    let url = format!("{}/api/v3/order?{}&signature={}", &app_config.base_url, query, signature);
-
-    // 3. 设置 Header
-    let mut headers = HeaderMap::new();
-    headers.insert("X-MBX-APIKEY", HeaderValue::from_str(&app_config.api_key)?);
-
-    // 4. 发送 POST 请求
-    let res = client.post(url)
-        .headers(headers)
-        .send()
-        .await?;
-
-    // 5. 结果处理
-    if !res.status().is_success() {
-        let error_text = res.text().await?;
-        println!("❌ Sell Order Failed: {}", error_text);
-        return Err(format!("Binance Sell Error: {}", error_text).into());
-    }
-
-    let response_json: serde_json::Value = res.json().await?;
-    println!("✅ Sell Order Success! Details: {:?}", response_json);
-
-    Ok(())
-}
-fn get_ticker_price(mut btc_price: Signal<String>, mut eth_price: Signal<String>) {
-    let _price_task = use_coroutine(move |_rx: UnboundedReceiver<()>| {
-        async move {
-            let url = "wss://stream.binance.com:9443/ws/btcusdt@ticker/ethusdt@ticker";
-
-            if let Ok((mut ws_stream, _)) = connect_async(url).await {
-                while let Some(Ok(msg)) = ws_stream.next().await {
-                    if let Message::Text(text) = msg {
-                        if let Ok(ticker) = serde_json::from_str::<PriceTicker>(&text) {
-                            let formatted = ticker.price
-                                .parse::<f64>()
-                                .map(|p| format!("{:.2}", p))
-                                .unwrap_or(ticker.price);
-
-                            match ticker.symbol.as_str() {
-                                "BTCUSDT" => btc_price.set(formatted),
-                                "ETHUSDT" => eth_price.set(formatted),
-                                _ => {}
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    });
-}
-
 // UI Component
 #[allow(non_snake_case)]
 pub fn Home() -> Element {
-    let mut usdt_balance = use_signal(|| "-0.00".to_string());
-    let mut btc_balance = use_signal(|| "-0.00".to_string());
-    let mut eth_balance = use_signal(|| "-0.00".to_string());
+    // 实时行情
     let btc_price = use_signal(|| "-0.00".to_string());
     let eth_price = use_signal(|| "-0.00".to_string());
 
+    // 获取余额
+    let mut usdt_balance = use_signal(|| "-0.00".to_string());
+    let mut btc_balance = use_signal(|| "-0.00".to_string());
+    let mut eth_balance = use_signal(|| "-0.00".to_string());
+
+    // 自动交易
     let mut auto_trade_buy_btc = use_signal(|| false);
     let mut auto_trade_sell_btc = use_signal(|| false);
+
+    // 订单信息
     let mut btc_order = use_signal(|| Order {
         .. Default::default()
     });
 
+    // 获取行情
     get_ticker_price(btc_price, eth_price);
 
     rsx! {
-
         div { class: "flex flex-col gap-8 p-4",
             header {
                 h1 { class: "text-2xl font-bold", "首页" }
@@ -231,6 +57,7 @@ pub fn Home() -> Element {
                     p { class: "text-xl font-mono text-purple-400", "§ {eth_price}" }
                 }
             }
+            // 账户信息
             section { class: "flex flex-col gap-4 bg-black p-6 rounded-xl border",
                 p { "USDT 余额: {usdt_balance}" }
                 p { "BTC 余额: {btc_balance}" }
@@ -247,6 +74,7 @@ pub fn Home() -> Element {
                     "刷新 USDT BTC ETH 余额"
                 }
             }
+            // 自动买入
             section { class: "flex flex-col gap-4 bg-black p-6 rounded-xl border",
                 p { "自动成交规则：当价格低于XXX（美元） 自动买入BTC" }
                 input {
@@ -315,6 +143,7 @@ pub fn Home() -> Element {
                     "停止自动买入BTC"
                 }
             }
+            // 自动卖出
             section { class: "flex flex-col gap-4 bg-black p-6 rounded-xl border",
                 p { "自动成交规则：当价格高于XXX（美元） 自动卖出BTC" }
                 input {
