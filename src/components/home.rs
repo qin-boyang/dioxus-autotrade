@@ -30,13 +30,21 @@ struct PriceTicker {
     price: String,
 }
 
+#[derive(Default)]
+struct Order {
+    target_btc_buy_price: String,
+    target_btc_buy_amount: String,
+    target_btc_sell_price: String,
+    target_btc_sell_amount: String,
+}
+
 /// Helper to sign requests for Binance
 fn sign_request(query: &str, secret: &str) -> String {
     let mut mac = HmacSha256::new_from_slice(secret.as_bytes()).unwrap();
     mac.update(query.as_bytes());
     hex::encode(mac.finalize().into_bytes())
 }
-async fn get_usdt_balance() -> Result<(String, String, String), Box<dyn std::error::Error>> {
+async fn get_balances() -> Result<(String, String, String), Box<dyn std::error::Error>> {
     println!("🦀 Getting USDT balance...");
 
     let app_config = CONFIG.read();
@@ -81,6 +89,45 @@ async fn get_usdt_balance() -> Result<(String, String, String), Box<dyn std::err
         .unwrap_or_else(|| "0.0".to_string());
     Ok((usdt, btc, eth))
 }
+async fn buy_btc_market(quote_order_qty: &str) -> Result<(), Box<dyn std::error::Error>> {
+    println!("🦀 Placing Market Buy Order for BTC...");
+
+    let app_config = CONFIG.read();
+    let client = reqwest::Client::new();
+
+    // 1. 準備參數 (市價單通常建議使用 quoteOrderQty，即你想花多少 USDT)
+    let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
+    let query = format!(
+        "symbol=BTCUSDT&side=BUY&type=MARKET&quoteOrderQty={}&timestamp={}",
+        quote_order_qty, timestamp
+    );
+
+    // 2. 簽名
+    let signature = sign_request(&query, &app_config.api_secret);
+    let url = format!("{}/api/v3/order?{}&signature={}", &app_config.base_url, query, signature);
+
+    // 3. 設置 Header
+    let mut headers = HeaderMap::new();
+    headers.insert("X-MBX-APIKEY", HeaderValue::from_str(&app_config.api_key)?);
+
+    // 4. 發送 POST 請求 (注意下單是 POST)
+    let res = client.post(url)
+        .headers(headers)
+        .send()
+        .await?;
+
+    // 5. 處理結果
+    if !res.status().is_success() {
+        let error_text = res.text().await?;
+        println!("❌ Order Failed: {}", error_text);
+        return Err(format!("Binance Buy Error: {}", error_text).into());
+    }
+
+    let response_json: serde_json::Value = res.json().await?;
+    println!("✅ Order Success! Details: {:?}", response_json);
+
+    Ok(())
+}
 fn get_ticker_price(mut btc_price: Signal<String>, mut eth_price: Signal<String>) {
     let _price_task = use_coroutine(move |_rx: UnboundedReceiver<()>| {
         async move {
@@ -117,6 +164,12 @@ pub fn Home() -> Element {
     let btc_price = use_signal(|| "-0.00".to_string());
     let eth_price = use_signal(|| "-0.00".to_string());
 
+    let mut auto_trade_buy_btc = use_signal(|| false);
+    let mut auto_trade_sell_btc = use_signal(|| false);
+    let mut btc_order = use_signal(|| Order {
+        .. Default::default()
+    });
+
     get_ticker_price(btc_price, eth_price);
 
     rsx! {
@@ -144,7 +197,7 @@ pub fn Home() -> Element {
                 button {
                     class: "bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-colors",
                     onclick: move |_| async move {
-                        if let Ok(new_balance) = get_usdt_balance().await {
+                        if let Ok(new_balance) = get_balances().await {
                             usdt_balance.set(new_balance.0);
                             btc_balance.set(new_balance.1);
                             eth_balance.set(new_balance.2);
@@ -155,17 +208,42 @@ pub fn Home() -> Element {
             }
             section { class: "flex flex-col gap-4 bg-black p-6 rounded-xl border",
                 p { "自动成交规则：当价格低于XXX 自动买入BTC" }
+                input {
+                    class: "border p-2 rounded",
+                    value: "{btc_order.read().target_btc_buy_price}",
+                    oninput: move |evt| btc_order.write().target_btc_buy_price = evt.value()
+                }
+                p { "自动成交规则：每次买入XXX 自动买入BTC" }
+                input {
+                    class: "border p-2 rounded",
+                    value: "{btc_order.read().target_btc_buy_amount}",
+                    oninput: move |evt| btc_order.write().target_btc_buy_amount = evt.value()
+                }
+                p {
+                    "機器人執行狀態：{auto_trade_buy_btc.read()}"
+                }
+
                 button{
                     class: "bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-colors",
                     onclick: move |_| async move {
-                        println!("开始自动买入BTC");
+                        auto_trade_buy_btc.set(true);
+                        while *auto_trade_buy_btc.read() {
+                            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                            println!("开始自动买入BTC");
+                            println!("当前价格：{btc_price}");
+                            println!("目标价格：{}", btc_order.read().target_btc_buy_price);
+                            if btc_price.read().parse::<f64>().unwrap() < btc_order.read().target_btc_buy_price.parse::<f64>().unwrap() {
+                                // TODO call function to buy BTC from Binance API
+                            }
+                        }
                     },
                     "开始自动买入BTC"
                 }
                 button{
                     class: "bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-colors",
                     onclick: move |_| async move {
-                        println!("开始自动买入BTC");
+                        auto_trade_buy_btc.set(false);
+                        println!("停止自动买入BTC");
                     },
                     "停止自动买入BTC"
                 }
