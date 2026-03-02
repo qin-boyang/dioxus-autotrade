@@ -2,7 +2,8 @@ use dioxus::prelude::*;
 
 // 1. Declare the module
 mod components {
-    pub mod home;
+    pub mod buy;
+    pub mod sell;
     pub mod settings;
     pub mod nav_layout;
 }
@@ -19,7 +20,8 @@ mod model {
 }
 
 // 2. Bring the component into scope
-use components::home::Home;
+use components::buy::Buy;
+use components::sell::Sell;
 use components::settings::Settings;
 use components::nav_layout::NavLayout;
 
@@ -80,7 +82,7 @@ pub fn Passcode() -> Element {
                 button {
                     class: "bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-colors",
                     onclick: move |_| {
-                        nav.push(Route::Home {});
+                        nav.push(Route::Buy {});
                     },
                     "开机"
                 }
@@ -98,7 +100,9 @@ enum Route {
     // Correctly nest these inside the layout
     #[layout(NavLayout)]
     #[route("/home")]
-    Home {},
+    Buy {},
+    #[route("/sell")]
+    Sell {},
     #[route("/settings")]
     Settings {},
 }

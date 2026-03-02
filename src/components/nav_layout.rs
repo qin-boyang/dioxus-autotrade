@@ -12,7 +12,8 @@ pub fn NavLayout() -> Element {
 
             // Your bottom nav code here...
             nav { class: "h-20 border-t flex justify-around items-center",
-                 Link { to: Route::Home {}, "首页" }
+                 Link { to: Route::Buy {}, "买入" }
+                 Link { to: Route::Sell {}, "卖出"}
                  Link { to: Route::Settings {}, "设置" }
             }
         }

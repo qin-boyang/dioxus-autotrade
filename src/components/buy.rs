@@ -8,7 +8,7 @@ use crate::model::get_ticker_price::get_ticker_price;
 
 // UI Component
 #[allow(non_snake_case)]
-pub fn Home() -> Element {
+pub fn Buy() -> Element {
     // 实时行情
     let btc_price: Signal<f64> = use_signal(|| -0.00);
     let eth_price: Signal<f64> = use_signal(|| -0.00);
@@ -258,59 +258,6 @@ pub fn Home() -> Element {
                     "停止自动买入BTC"
                 }
             }
-
-            hr { }
-
-
-            // 自动卖出
-            // section { class: "flex flex-col gap-4 bg-black p-6 rounded-xl border",
-            //     p { "自动成交规则：即你想卖出多少个 BTC" }
-            //     input {
-            //         class: "border p-2 rounded",
-            //         value: "{sell_quantity}",
-            //         oninput: move |evt| sell_quantity.set(evt.value().parse::<f64>().unwrap_or_default())
-            //     }
-            //     p {
-            //         "機器人執行狀態：{auto_trade_sell_btc.read()}"
-            //     }
-            //
-            //     button{
-            //         class: "bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-colors",
-            //         onclick: move |_| async move {
-            //             auto_trade_sell_btc.set(true);
-            //             while *auto_trade_sell_btc.read() {
-            //                 tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-            //                 println!("ℹ️ 开始自动卖出BTC");
-            //
-            //                 let current_price = btc_price.read().clone();
-            //
-            //                 println!("ℹ️ 当前价格：{}", current_price);
-            //
-            //                 if current_price > btc_sell_trigger_price.read().clone() {
-            //                     match sell_btc_market(sell_quantity.read().clone()).await {
-            //                         Ok(_) => {
-            //                             println!("✅ 自动卖出BTC成功");
-            //                             auto_trade_sell_btc.set(false);
-            //                         },
-            //                         Err(e) => {
-            //                             println!("❌ 自动卖出BTC失败：{}", e);
-            //                             // Consider breaking the loop on failure?
-            //                         }
-            //                     }
-            //                 }
-            //             }
-            //         },
-            //         "开始自动卖出BTC"
-            //     }
-            //     button{
-            //         class: "bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-colors",
-            //         onclick: move |_| async move {
-            //             auto_trade_sell_btc.set(false);
-            //             println!("ℹ️ 停止自动卖出BTC");
-            //         },
-            //         "停止自动卖出BTC"
-            //     }
-            // }
         }
     }
 }
