@@ -1,3 +1,4 @@
+use chrono::{DateTime, Duration, Local};
 use dioxus::prelude::*;
 
 use crate::model::buy_btc::buy_btc_market;
@@ -5,37 +6,38 @@ use crate::model::sell_btc::sell_btc_market;
 use crate::model::get_balance::get_balances;
 use crate::model::get_ticker_price::get_ticker_price;
 
-// 币安行情数据结构
-
-
-#[derive(Default)]
-struct Order {
-    target_btc_buy_price: String,
-    quote_order_qty: String, // 即你想花多少 USDT
-    target_btc_sell_price: String,
-    sell_quantity: String,
-}
-
 // UI Component
 #[allow(non_snake_case)]
 pub fn Home() -> Element {
     // 实时行情
-    let btc_price = use_signal(|| "-0.00".to_string());
-    let eth_price = use_signal(|| "-0.00".to_string());
+    let btc_price: Signal<f64> = use_signal(|| -0.00);
+    let eth_price: Signal<f64> = use_signal(|| -0.00);
 
     // 获取余额
-    let mut usdt_balance = use_signal(|| "-0.00".to_string());
-    let mut btc_balance = use_signal(|| "-0.00".to_string());
-    let mut eth_balance = use_signal(|| "-0.00".to_string());
+    let mut usdt_balance: Signal<f64> = use_signal(|| -0.00);
+    let mut btc_balance: Signal<f64> = use_signal(|| -0.00);
+    let mut eth_balance: Signal<f64> = use_signal(|| -0.00);
 
     // 自动交易
     let mut auto_trade_buy_btc = use_signal(|| false);
     let mut auto_trade_sell_btc = use_signal(|| false);
 
+    // 开始交易时的指标
+    let mut btc_starting_price: Signal<String> = use_signal(|| "-0.00".to_string());
+    let mut btc_gap_price: Signal<String> = use_signal(|| "-0.00".to_string());
+    let mut btc_buy_trigger_price: Signal<String> = use_signal(|| "-0.00".to_string());
+    let mut btc_sell_trigger_price: Signal<String> = use_signal(|| "-0.00".to_string());
+    let mut btc_buy_unit_price: Signal<String> = use_signal(|| "-0.00".to_string());
+    let mut btc_sell_unit_qty: Signal<String> = use_signal(|| "-0.00".to_string());
+    let mut btc_buy_sell_multiplier: Signal<String> = use_signal(|| "-0.00".to_string());
+    let mut btc_duration: Signal<String> = use_signal(|| "-0".to_string());
+    let mut btc_ending_time: Signal<DateTime<Local>> = use_signal(|| Local::now());
+    let mut btc_trade_times: Signal<String> = use_signal(|| "0".to_string());
+
     // 订单信息
-    let mut btc_order = use_signal(|| Order {
-        .. Default::default()
-    });
+    let mut quote_order_qty: Signal<String> = use_signal(|| "0.00".to_string());
+    let mut sell_quantity: Signal<String> = use_signal(|| "0.00".to_string());
+
 
     // 获取行情
     get_ticker_price(btc_price, eth_price);
@@ -76,49 +78,143 @@ pub fn Home() -> Element {
             }
             // 自动买入
             section { class: "flex flex-col gap-4 bg-black p-6 rounded-xl border",
-                p { "自动成交规则：当价格低于XXX（美元） 自动买入BTC" }
+                p { "开始自动交易时的BTC价格" }
                 input {
                     class: "border p-2 rounded",
-                    value: "{btc_order.read().target_btc_buy_price}",
-                    oninput: move |evt| btc_order.write().target_btc_buy_price = evt.value()
+                    value: "{btc_starting_price}",
+                    readonly: true,
+                }
+                p { "ℹ️ 追单价格" }
+                input {
+                    class: "border p-2 rounded",
+                    value: "{btc_gap_price}",
+                    oninput: move |evt| {
+                        btc_gap_price.set(evt.value());
+                    }
+                }
+                p { "触发自动买入时的BTC价格" }
+                input {
+                    class: "border p-2 rounded",
+                    value: "{btc_buy_trigger_price}",
+                    readonly: true,
+                }
+                p { "触发自动卖出时的BTC价格" }
+                input {
+                    class: "border p-2 rounded",
+                    value: "{btc_sell_trigger_price}",
+                    readonly: true,
+                }
+                p { "ℹ️ 追单单价" }
+                input {
+                    class: "border p-2 rounded",
+                    value: "{btc_buy_unit_price}",
+                    oninput: move |evt| {
+                        btc_buy_unit_price.set(evt.value());
+                        quote_order_qty.set((btc_buy_unit_price.read().parse::<f64>().unwrap_or_default() * btc_buy_sell_multiplier.read().parse::<f64>().unwrap_or_default()).to_string());
+                    }
+                }
+                p { "ℹ️ 追单倍数" }
+                input {
+                    class: "border p-2 rounded",
+                    value: "{btc_buy_sell_multiplier}",
+                    oninput: move |evt| {
+                        btc_buy_sell_multiplier.set(evt.value());
+                        quote_order_qty.set((btc_buy_unit_price.read().parse::<f64>().unwrap_or_default() * btc_buy_sell_multiplier.read().parse::<f64>().unwrap_or_default()).to_string());
+                    }
                 }
                 p { "自动成交规则：即你想花多少 USDT 去买入" }
                 input {
                     class: "border p-2 rounded",
-                    value: "{btc_order.read().quote_order_qty}",
-                    oninput: move |evt| btc_order.write().quote_order_qty = evt.value()
+                    value: "{quote_order_qty}",
+                    readonly: true,
+                }
+                p { "ℹ️ 操作几分钟" }
+                input {
+                    class: "border p-2 rounded",
+                    value: "{btc_duration}",
+                    oninput: move |evt| {
+                        btc_duration.set(evt.value());
+                        btc_ending_time.set(Local::now() + Duration::minutes(btc_duration.read().parse::<i64>().unwrap_or_default()));
+                    }
+                }
+                p { "几点几分结束" }
+                input {
+                    class: "border p-2 rounded",
+                    value: "{btc_ending_time}",
+                    readonly: true,
+                }
+                p { "ℹ️ 强制结束时卖出多少个BTC" }
+                input {
+                    class: "border p-2 rounded",
+                    value: "{sell_quantity}",
+                    oninput: move |evt| sell_quantity.set(evt.value())
+                }
+                p { "ℹ️ 操作几次" }
+                input {
+                    class: "border p-2 rounded",
+                    value: "{btc_trade_times}",
+                    oninput: move |evt| btc_trade_times.set(evt.value())
                 }
                 p {
-                    "機器人執行狀態：{auto_trade_buy_btc.read()}"
+                    "机器人状态："
+                    br {}
+                    if auto_trade_buy_btc.read().clone() {
+                        "✅ 自动买入已经开始"
+                    } else {
+                        "❌ 自动买入已经停止"
+                    }
+                    br {}
+                    if auto_trade_sell_btc.read().clone() {
+                        "✅ 自动卖出已经开始"
+                    } else {
+                        "❌ 自动卖出已经停止"
+                    }
                 }
 
                 button{
                     class: "bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-colors",
                     onclick: move |_| async move {
-                        auto_trade_buy_btc.set(true);
-                        while *auto_trade_buy_btc.read() {
-                            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-                            println!("ℹ️ 开始自动买入BTC");
+                        while btc_trade_times.read().parse::<i32>().unwrap_or_default() > 0 {
 
-                            let current_price_str = btc_price.read().clone();
-                            let (target_buy_price_str, quote_order_qty_str) = {
-                                let order = btc_order.read();
-                                (order.target_btc_buy_price.clone(), order.quote_order_qty.clone())
-                            };
+                            auto_trade_buy_btc.set(true);
+                            auto_trade_sell_btc.set(false);
+                            btc_starting_price.set(btc_price.read().to_string());
+                            btc_buy_trigger_price.set((btc_starting_price.read().parse::<f64>().unwrap_or_default() + btc_gap_price.read().parse::<f64>().unwrap_or_default()).to_string());
+                            btc_sell_trigger_price.set((btc_starting_price.read().parse::<f64>().unwrap_or_default() - btc_gap_price.read().parse::<f64>().unwrap_or_default()).to_string());
+                            btc_ending_time.set(Local::now() + Duration::minutes(btc_duration.read().parse::<i64>().unwrap_or_default()));
+                            println!("ℹ️ 结束时间： {}", btc_ending_time.read());
+                            while auto_trade_buy_btc.read().clone() || auto_trade_sell_btc.read().clone() {
+                                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                                if Local::now() >= *btc_ending_time.read() {
+                                    if auto_trade_sell_btc.read().clone() {
+                                        println!("✅ 时间到，开始强制卖出BTC");
+                                        match sell_btc_market(sell_quantity.read().parse::<f64>().unwrap_or_default()).await {
+                                            Ok(_) => {
+                                                println!("✅ 强制卖出BTC成功");
+                                                auto_trade_sell_btc.set(false);
+                                            },
+                                            Err(e) => {
+                                                println!("❌ 强制卖出BTC失败：{}", e);
+                                                // Consider breaking the loop on failure?
+                                            }
+                                        }
+                                    }
+                                    println!("❌ 自动交易已经结束");
+                                    auto_trade_buy_btc.set(false);
+                                    auto_trade_sell_btc.set(false);
+                                    break;
+                                }
 
-                            println!("ℹ️ 当前价格：{}", current_price_str);
-                            println!("ℹ️ 目标价格：{}", target_buy_price_str);
-
-                            match (
-                                current_price_str.parse::<f64>(),
-                                target_buy_price_str.parse::<f64>()
-                            ) {
-                                (Ok(current_price), Ok(target_price)) => {
-                                    if current_price < target_price {
-                                        match buy_btc_market(&quote_order_qty_str).await {
+                                if auto_trade_buy_btc.read().clone() {
+                                    println!("ℹ️ 当前价格：{}", btc_price.read().clone());
+                                    println!("ℹ️ 买入触发价格：{}", btc_buy_trigger_price.read().clone());
+                                    if btc_price.read().clone() >= btc_buy_trigger_price.read().parse::<f64>().unwrap_or_default() {
+                                        println!("✅ 触发价格已到，开始自动买入BTC");
+                                        match buy_btc_market(quote_order_qty.read().parse::<f64>().unwrap_or_default()).await {
                                             Ok(_) => {
                                                 println!("✅ 自动买入BTC成功");
                                                 auto_trade_buy_btc.set(false);
+                                                auto_trade_sell_btc.set(true);
                                             },
                                             Err(e) => {
                                                 println!("❌ 自动买入BTC失败：{}", e);
@@ -126,10 +222,29 @@ pub fn Home() -> Element {
                                             }
                                         }
                                     }
-                                },
-                                (Err(e), _) => println!("❌ Failed to parse current price: {}", e),
-                                (_, Err(e)) => println!("❌ Failed to parse target price: {}", e),
+                                }
+
+                                if auto_trade_sell_btc.read().clone() {
+                                    println!("ℹ️ 当前价格：{}", btc_price.read().clone());
+                                    println!("ℹ️ 卖出触发价格：{}", btc_sell_trigger_price.read().clone());
+                                    if btc_price.read().clone() <= btc_sell_trigger_price.read().parse::<f64>().unwrap_or_default() {
+                                        println!("✅ 触发价格已到，开始强制卖出BTC");
+                                        match sell_btc_market(sell_quantity.read().parse::<f64>().unwrap_or_default()).await {
+                                            Ok(_) => {
+                                                println!("✅ 自动卖出BTC成功");
+                                                auto_trade_sell_btc.set(false);
+                                            },
+                                            Err(e) => {
+                                                println!("❌ 自动卖出BTC失败：{}", e);
+                                                // Consider breaking the loop on failure?
+                                            }
+                                        }
+                                    }
+                                }
                             }
+
+                            let counter = (btc_trade_times.read().parse::<i32>().unwrap_or_default() - 1).to_string();
+                            btc_trade_times.set(counter);
                         }
                     },
                     "开始自动买入BTC"
@@ -143,75 +258,59 @@ pub fn Home() -> Element {
                     "停止自动买入BTC"
                 }
             }
+
+            hr { }
+
+
             // 自动卖出
-            section { class: "flex flex-col gap-4 bg-black p-6 rounded-xl border",
-                p { "自动成交规则：当价格高于XXX（美元） 自动卖出BTC" }
-                input {
-                    class: "border p-2 rounded",
-                    value: "{btc_order.read().target_btc_sell_price}",
-                    oninput: move |evt| btc_order.write().target_btc_sell_price = evt.value()
-                }
-                p { "自动成交规则：即你想卖出多少个 BTC" }
-                input {
-                    class: "border p-2 rounded",
-                    value: "{btc_order.read().sell_quantity}",
-                    oninput: move |evt| btc_order.write().sell_quantity = evt.value()
-                }
-                p {
-                    "機器人執行狀態：{auto_trade_sell_btc.read()}"
-                }
-
-                button{
-                    class: "bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-colors",
-                    onclick: move |_| async move {
-                        auto_trade_sell_btc.set(true);
-                        while *auto_trade_sell_btc.read() {
-                            tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-                            println!("ℹ️ 开始自动卖出BTC");
-
-                            let current_price_str = btc_price.read().clone();
-                            let (target_sell_price_str, sell_quantity_str) = {
-                                let order = btc_order.read();
-                                (order.target_btc_sell_price.clone(), order.sell_quantity.clone())
-                            };
-
-                            println!("ℹ️ 当前价格：{}", current_price_str);
-                            println!("ℹ️ 目标价格：{}", target_sell_price_str);
-
-                            match (
-                                current_price_str.parse::<f64>(),
-                                target_sell_price_str.parse::<f64>()
-                            ) {
-                                (Ok(current_price), Ok(target_price)) => {
-                                    if current_price > target_price {
-                                        match sell_btc_market(&sell_quantity_str).await {
-                                            Ok(_) => {
-                                                println!("✅ 自动卖出BTC成功");
-                                                auto_trade_sell_btc.set(false);
-                                            },
-                                            Err(e) => {
-                                                println!("❌ 自动卖出BTC失败：{}", e);
-                                                // Consider breaking the loop on failure?
-                                            }
-                                        }
-                                    }
-                                },
-                                (Err(e), _) => println!("❌ Failed to parse current price: {}", e),
-                                (_, Err(e)) => println!("❌ Failed to parse target price: {}", e),
-                            }
-                        }
-                    },
-                    "开始自动卖出BTC"
-                }
-                button{
-                    class: "bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-colors",
-                    onclick: move |_| async move {
-                        auto_trade_sell_btc.set(false);
-                        println!("ℹ️ 停止自动卖出BTC");
-                    },
-                    "停止自动卖出BTC"
-                }
-            }
+            // section { class: "flex flex-col gap-4 bg-black p-6 rounded-xl border",
+            //     p { "自动成交规则：即你想卖出多少个 BTC" }
+            //     input {
+            //         class: "border p-2 rounded",
+            //         value: "{sell_quantity}",
+            //         oninput: move |evt| sell_quantity.set(evt.value().parse::<f64>().unwrap_or_default())
+            //     }
+            //     p {
+            //         "機器人執行狀態：{auto_trade_sell_btc.read()}"
+            //     }
+            //
+            //     button{
+            //         class: "bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-colors",
+            //         onclick: move |_| async move {
+            //             auto_trade_sell_btc.set(true);
+            //             while *auto_trade_sell_btc.read() {
+            //                 tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+            //                 println!("ℹ️ 开始自动卖出BTC");
+            //
+            //                 let current_price = btc_price.read().clone();
+            //
+            //                 println!("ℹ️ 当前价格：{}", current_price);
+            //
+            //                 if current_price > btc_sell_trigger_price.read().clone() {
+            //                     match sell_btc_market(sell_quantity.read().clone()).await {
+            //                         Ok(_) => {
+            //                             println!("✅ 自动卖出BTC成功");
+            //                             auto_trade_sell_btc.set(false);
+            //                         },
+            //                         Err(e) => {
+            //                             println!("❌ 自动卖出BTC失败：{}", e);
+            //                             // Consider breaking the loop on failure?
+            //                         }
+            //                     }
+            //                 }
+            //             }
+            //         },
+            //         "开始自动卖出BTC"
+            //     }
+            //     button{
+            //         class: "bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-colors",
+            //         onclick: move |_| async move {
+            //             auto_trade_sell_btc.set(false);
+            //             println!("ℹ️ 停止自动卖出BTC");
+            //         },
+            //         "停止自动卖出BTC"
+            //     }
+            // }
         }
     }
 }

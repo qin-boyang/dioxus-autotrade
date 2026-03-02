@@ -11,7 +11,7 @@ struct PriceTicker {
     #[serde(rename = "c")]
     price: String,
 }
-pub(crate) fn get_ticker_price(mut btc_price: Signal<String>, mut eth_price: Signal<String>) {
+pub(crate) fn get_ticker_price(mut btc_price: Signal<f64>, mut eth_price: Signal<f64>) {
     let _price_task = use_coroutine(move |_rx: UnboundedReceiver<()>| {
         async move {
             let url = "wss://stream.binance.com:9443/ws/btcusdt@ticker/ethusdt@ticker";
@@ -20,10 +20,8 @@ pub(crate) fn get_ticker_price(mut btc_price: Signal<String>, mut eth_price: Sig
                 while let Some(Ok(msg)) = ws_stream.next().await {
                     if let Message::Text(text) = msg {
                         if let Ok(ticker) = serde_json::from_str::<PriceTicker>(&text) {
-                            let formatted = ticker.price
-                                .parse::<f64>()
-                                .map(|p| format!("{:.2}", p))
-                                .unwrap_or(ticker.price);
+                            let formatted = ticker.price.parse::<f64>()
+                                .unwrap_or(ticker.price.parse::<f64>().unwrap());
 
                             match ticker.symbol.as_str() {
                                 "BTCUSDT" => btc_price.set(formatted),

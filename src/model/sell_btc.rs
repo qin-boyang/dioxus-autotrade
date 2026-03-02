@@ -4,7 +4,7 @@ use dioxus::prelude::ReadableExt;
 use crate::config::app_config::CONFIG;
 use crate::model::sign_signature::sign_request;
 
-pub(crate) async fn sell_btc_market(quantity: &str) -> dioxus::Result<(), Box<dyn std::error::Error>> {
+pub(crate) async fn sell_btc_market(quantity: f64) -> dioxus::Result<(), Box<dyn std::error::Error>> {
     println!("🦀 Placing Market Sell Order for BTC...");
 
     let app_config = CONFIG.read();

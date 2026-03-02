@@ -17,6 +17,7 @@ hex = "0.4.3"
 futures-util = "0.3"
 tokio-tungstenite = { version = "0.28.0", features = ["native-tls"] }
 tokio = { version = "1.49.0", features = ["full"]}
+chrono = "0.4.44"
 
 [features]
 default = ["desktop"]
