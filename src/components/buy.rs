@@ -253,6 +253,8 @@ pub fn Buy() -> Element {
                     class: "bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-colors",
                     onclick: move |_| async move {
                         auto_trade_buy_btc.set(false);
+                        auto_trade_sell_btc.set(false);
+                        btc_trade_times.set("0".to_string());
                         println!("ℹ️ 停止自动买入BTC");
                     },
                     "停止自动买入BTC"
