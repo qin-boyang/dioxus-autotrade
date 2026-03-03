@@ -232,7 +232,7 @@ pub fn Sell() -> Element {
                                         match buy_btc_market(quote_order_qty.read().parse::<f64>().unwrap_or_default()).await {
                                             Ok(_) => {
                                                 println!("✅ 自动买入BTC成功");
-                                                auto_trade_sell_btc.set(false);
+                                                auto_trade_buy_btc.set(false);
                                             },
                                             Err(e) => {
                                                 println!("❌ 自动买入BTC失败：{}", e);
@@ -253,6 +253,8 @@ pub fn Sell() -> Element {
                     class: "bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg transition-colors",
                     onclick: move |_| async move {
                         auto_trade_buy_btc.set(false);
+                        auto_trade_sell_btc.set(false);
+                        btc_trade_times.set("0".to_string());
                         println!("ℹ️ 停止自动卖出BTC");
                     },
                     "停止自动卖出BTC"
