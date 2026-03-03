@@ -24,6 +24,7 @@ use components::buy::Buy;
 use components::sell::Sell;
 use components::settings::Settings;
 use components::nav_layout::NavLayout;
+use config::app_config::load_global_config;
 
 const FAVICON: Asset = asset!("/assets/favicon.ico");
 const MAIN_CSS: Asset = asset!("/assets/main.css");
@@ -36,6 +37,7 @@ fn main() {
 
 #[component]
 fn App() -> Element {
+    load_global_config();
     rsx! {
         document::Link { rel: "icon", href: FAVICON }
         document::Link { rel: "stylesheet", href: MAIN_CSS } document::Link { rel: "stylesheet", href: TAILWIND_CSS }
