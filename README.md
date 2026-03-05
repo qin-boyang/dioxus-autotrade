@@ -60,3 +60,24 @@ You will find a `.msi` installer
 in `target/dx/dioxus-autotrade/release/bundle/msi/`.
 ou will find a `.app` folder and potentially a `.dmg` 
 in `target/dx/dioxus-autotrade/release/bundle/macos/`.
+
+### Bundle
+1. 准备工作（安装 Target）
+首先，确保你的开发机安装了 Intel 架构的编译工具链：
+```bash
+rustup target add x86_64-apple-darwin
+```
+
+2. 执行打包命令
+在你的 Dioxus 项目根目录下运行：
+```bash
+dx bundle --platform desktop --release --target x86_64-apple-darwin
+```
+
+💡 进阶建议：设置最低系统版本
+有时候即使架构对了，如果你的 SDK 太新（比如用的 macOS 15 的 SDK），客户如果是几年前的老系统（如 macOS 10.15）依然打不开。
+为了提高兼容性，建议在执行命令前，通过环境变量指定最低支持的 macOS 版本（通常建议 11.0 或更低）：
+```bash
+MACOSX_DEPLOYMENT_TARGET=11.0 dx bundle --release --target x86_64-apple-darwin
+MACOSX_DEPLOYMENT_TARGET=10.15 dx bundle --platform desktop --release --target x86_64-apple-darwin
+```

@@ -3,7 +3,7 @@ use crate::config::app_config::CONFIG;
 
 #[component]
 pub fn Settings() -> Element {
-    let nav = use_navigator();
+    let _nav = use_navigator();
 
     rsx! {
         div { class: "flex flex-col gap-8 p-4",

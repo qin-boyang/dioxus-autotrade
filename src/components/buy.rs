@@ -28,7 +28,7 @@ pub fn Buy() -> Element {
     let mut btc_buy_trigger_price: Signal<String> = use_signal(|| "-0.00".to_string());
     let mut btc_sell_trigger_price: Signal<String> = use_signal(|| "-0.00".to_string());
     let mut btc_buy_unit_price: Signal<String> = use_signal(|| "-0.00".to_string());
-    let mut btc_sell_unit_qty: Signal<String> = use_signal(|| "-0.00".to_string());
+    // let mut btc_sell_unit_qty: Signal<String> = use_signal(|| "-0.00".to_string());
     let mut btc_buy_sell_multiplier: Signal<String> = use_signal(|| "-0.00".to_string());
     let mut btc_duration: Signal<String> = use_signal(|| "-0".to_string());
     let mut btc_ending_time: Signal<DateTime<Local>> = use_signal(|| Local::now());

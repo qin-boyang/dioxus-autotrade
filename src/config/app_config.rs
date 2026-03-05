@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::{env, fs};
+use std::{fs};
 use dioxus::prelude::*;
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -29,10 +29,7 @@ pub fn load_global_config() {
     println!("嘗試讀取絕對路徑: {:?}", config_path);
 
     // Matching the Result of the file read
-    let content = match fs::read_to_string(config_path) {
-        Ok(c) => c,
-        Err(_) => format!("reading file error"),
-    };
+    let content = fs::read_to_string(config_path).unwrap_or_else(|_| "reading file error".to_string());
 
     // Processing into key-value pairs
     let kv_pairs: HashMap<String, String> = content
