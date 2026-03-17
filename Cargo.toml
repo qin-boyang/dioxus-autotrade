@@ -1,6 +1,6 @@
 [package]
 name = "dioxus-autotrade"
-version = "0.1.0"
+version = "1.9.0"
 authors = ["boyangqin <qboyang@yahoo.com>"]
 edition = "2021"
 

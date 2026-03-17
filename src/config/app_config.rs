@@ -11,9 +11,9 @@ pub struct AppConfig {
 
 // Defining the global signal for Dioxus 0.7
 pub static CONFIG: GlobalSignal<AppConfig> = Signal::global(|| AppConfig {
-    base_url: "https://testnet.binance.vision".to_string(),
-    api_key: "9Up87GEIzsfmHhZXmUmMz7rNynChodTx5mv8Z7X21vMDqpK0RXqyAk2nNmdgqNgZ".to_string(),
-    api_secret: "6JZxkyfRBRFBB5V8JpDuJGDLJIacoUQ1adlda0cjfhXJgXQDPBylPsXJFvj5cpqQ".to_string(),
+    base_url: "未设定".to_string(),
+    api_key: "未设定".to_string(),
+    api_secret: "未设定".to_string(),
 });
 
 pub fn load_global_config() {
