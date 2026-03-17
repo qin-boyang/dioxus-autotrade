@@ -45,7 +45,7 @@ pub fn Sell() -> Element {
     rsx! {
         div { class: "flex flex-col gap-8 p-4",
             header {
-                h1 { class: "text-2xl font-bold", "卖出" }
+                h1 { class: "text-2xl font-bold", "卖出BTC界面" }
                 p { class: "text-gray-300", "币安交易机器人" }
             }
             // 实时行情卡片
