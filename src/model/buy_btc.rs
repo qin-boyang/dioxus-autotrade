@@ -26,20 +26,30 @@ pub(crate) async fn buy_btc_market(quote_order_qty: f64) -> dioxus::Result<(), B
     headers.insert("X-MBX-APIKEY", HeaderValue::from_str(&app_config.api_key)?);
 
     // 4. 發送 POST 請求 (注意下單是 POST)
-    let res = client.post(url)
+    let res_result = client.post(&url)
         .headers(headers)
         .send()
-        .await?;
+        .await;
+    // 检查是否是网络/底层请求错误
+    let res = match res_result {
+        Ok(response) => response,
+        Err(e) => {
+            // 这里处理的是：DNS 解析不了、连接超时、本地代理拦截等问题
+            println!("❌ [Network Error] 无法触达币安服务器: {:?}", e);
+            return Err(Box::new(e));
+        }
+    };
 
     // 5. 處理結果
     if !res.status().is_success() {
-        let error_text = res.text().await?;
-        println!("❌ Order Failed: {}", error_text);
-        return Err(format!("Binance Buy Error: {}", error_text).into());
+        let status = res.status();
+        let error_text = res.text().await.unwrap_or_else(|_| "无法读取错误详情".to_string());
+        println!("❌ [币安业务错误] 状态码: {}, 详情: {}", status, error_text);
+        return Err(format!("Binance Buy Error ({}): {}", status, error_text).into());
     }
 
     let response_json: serde_json::Value = res.json().await?;
-    println!("✅ Order Success! Details: {:?}", response_json);
+    println!("✅ Buy Order Success! Details: {:?}", response_json);
 
     Ok(())
 }
