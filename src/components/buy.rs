@@ -165,19 +165,20 @@ pub fn Buy() -> Element {
                     onclick: move |_| async move {
                         println!("ℹ️ 开始自动买入BTC");
                         'outer: while btc_trade_times.read().parse::<i32>().unwrap_or_default() > 0 {
-
+                            println!("ℹ️ 开始第 {} 次自动买入BTC", btc_trade_times.read());
                             auto_trade_buy_btc.set(true);
                             auto_trade_sell_btc.set(false);
                             btc_starting_price.set(btc_price.read().to_string());
                             btc_buy_trigger_price.set((btc_starting_price.read().parse::<f64>().unwrap_or_default() + btc_gap_price.read().parse::<f64>().unwrap_or_default()).to_string());
                             btc_sell_trigger_price.set((btc_starting_price.read().parse::<f64>().unwrap_or_default() - btc_gap_price.read().parse::<f64>().unwrap_or_default()).to_string());
                             btc_ending_time.set(Local::now() + Duration::minutes(btc_duration.read().parse::<i64>().unwrap_or_default()));
-                            println!("ℹ️ 结束时间： {}", btc_ending_time.read());
+                            println!("ℹ️ 第 {} 次结束时间： {}", btc_trade_times.read(), btc_ending_time.read());
                             'inner: while auto_trade_buy_btc.read().clone() || auto_trade_sell_btc.read().clone() {
                                 tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                                // time's up
                                 if Local::now() >= *btc_ending_time.read() {
                                     if auto_trade_sell_btc.read().clone() {
-                                        println!("✅ 时间到，开始强制卖出BTC");
+                                        println!("✅ 第 {} 次时间到，开始强制卖出BTC", btc_trade_times.read());
                                         match sell_btc_market(sell_quantity.read().parse::<f64>().unwrap_or_default()).await {
                                             Ok(_) => {
                                                 println!("✅ 强制卖出BTC成功");
@@ -190,17 +191,17 @@ pub fn Buy() -> Element {
                                             }
                                         }
                                     }
-                                    println!("❌ 自动交易已经结束");
+                                    println!("❌ 第 {} 次自动交易已经结束", btc_trade_times.read());
                                     auto_trade_buy_btc.set(false);
                                     auto_trade_sell_btc.set(false);
                                     break 'inner;
                                 }
-
+                                // buying
                                 if auto_trade_buy_btc.read().clone() {
                                     println!("ℹ️ 当前价格：{}", btc_price.read().clone());
                                     println!("ℹ️ 买入触发价格：{}", btc_buy_trigger_price.read().clone());
                                     if btc_price.read().clone() >= btc_buy_trigger_price.read().parse::<f64>().unwrap_or_default() {
-                                        println!("✅ 触发价格已到，开始自动买入BTC");
+                                        println!("✅ 第 {} 次触发价格已到，开始自动买入BTC", btc_trade_times.read());
                                         match buy_btc_market(quote_order_qty.read().parse::<f64>().unwrap_or_default()).await {
                                             Ok(_) => {
                                                 println!("✅ 自动买入BTC成功");
@@ -215,12 +216,12 @@ pub fn Buy() -> Element {
                                         }
                                     }
                                 }
-
+                                // selling
                                 if auto_trade_sell_btc.read().clone() {
                                     println!("ℹ️ 当前价格：{}", btc_price.read().clone());
                                     println!("ℹ️ 卖出触发价格：{}", btc_sell_trigger_price.read().clone());
                                     if btc_price.read().clone() <= btc_sell_trigger_price.read().parse::<f64>().unwrap_or_default() {
-                                        println!("✅ 触发价格已到，开始强制卖出BTC");
+                                        println!("✅ 第 {} 次触发价格已到，开始强制卖出BTC", btc_trade_times.read());
                                         match sell_btc_market(sell_quantity.read().parse::<f64>().unwrap_or_default()).await {
                                             Ok(_) => {
                                                 println!("✅ 自动卖出BTC成功");
