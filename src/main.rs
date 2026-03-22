@@ -17,6 +17,7 @@ mod model {
     pub mod sell_btc;
     pub mod get_balance;
     pub mod get_ticker_price;
+    pub mod alarm;
 }
 
 // 2. Bring the component into scope
