@@ -16,21 +16,42 @@ pub(crate) fn get_ticker_price(mut btc_price: Signal<f64>, mut eth_price: Signal
         async move {
             let url = "wss://stream.binance.com:9443/ws/btcusdt@ticker/ethusdt@ticker";
 
-            if let Ok((mut ws_stream, _)) = connect_async(url).await {
-                while let Some(Ok(msg)) = ws_stream.next().await {
-                    if let Message::Text(text) = msg {
-                        if let Ok(ticker) = serde_json::from_str::<PriceTicker>(&text) {
-                            let formatted = ticker.price.parse::<f64>()
-                                .unwrap_or(ticker.price.parse::<f64>().unwrap());
+            println!("[WS] 尝试连接 Binance: {}", url);
 
-                            match ticker.symbol.as_str() {
-                                "BTCUSDT" => btc_price.set(formatted),
-                                "ETHUSDT" => eth_price.set(formatted),
-                                _ => {}
+            match connect_async(url).await {
+                Ok((mut ws_stream, _)) => {
+                    println!("[WS] 连接成功！开始接收行情...");
+
+                    while let Some(msg_result) = ws_stream.next().await {
+                        match msg_result {
+                            Ok(msg) => {
+                                if let Message::Text(text) = msg {
+                                    // 如果你想看最原始的 JSON 字符串，取消下面这行的注释：
+                                    // println!("[Raw] {}", text);
+
+                                    match serde_json::from_str::<PriceTicker>(&text) {
+                                        Ok(ticker) => {
+                                            if let Ok(formatted) = ticker.price.parse::<f64>() {
+                                                // 打印解析后的价格，确认逻辑正确
+                                                // println!("[Parsed] {} -> {}", ticker.symbol, formatted);
+
+                                                match ticker.symbol.as_str() {
+                                                    "BTCUSDT" => btc_price.set(formatted),
+                                                    "ETHUSDT" => eth_price.set(formatted),
+                                                    _ => {}
+                                                }
+                                            }
+                                        }
+                                        Err(e) => println!("[Error] JSON 解析失败: {}. 原始数据: {}", e, text),
+                                    }
+                                }
                             }
+                            Err(e) => println!("[Error] 读取消息错误: {}", e),
                         }
                     }
+                    println!("[WS] 连接已断开。");
                 }
+                Err(e) => println!("[Error] 无法建立连接: {}", e),
             }
         }
     });
