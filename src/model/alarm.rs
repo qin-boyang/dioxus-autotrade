@@ -25,7 +25,7 @@ pub fn play_beep() {
 
         // 2. 生成正弦波音源
         let source = SineWave::new(800.0) // 800Hz 是比较刺耳的报警频率
-            .take_duration(Duration::from_secs(10)) // 修改：持续时间改为 10 秒
+            .take_duration(Duration::from_secs(5)) // 修改：持续时间改为 5 秒
             .amplify(1.0); // 修改：1.0 为最大标准音量（不建议超过 1.0 否则会爆音/失真）
 
         // 3. 播放
