@@ -178,8 +178,8 @@ pub fn Buy() -> Element {
                             } else {
                                 0.0
                             };
-                            // 保留7位小数
-                            sell_quantity.set(format!("{:.7}", result));
+                            // 保留5位小数
+                            sell_quantity.set(format!("{:.5}", result));
                             btc_ending_time.set(Local::now() + Duration::minutes(btc_duration.read().parse::<i64>().unwrap_or_default()));
                             println!("ℹ️ 第 {} 次结束时间： {}", btc_trade_times.read(), btc_ending_time.read());
                             'inner: while auto_trade_buy_btc.read().clone() || auto_trade_sell_btc.read().clone() {
