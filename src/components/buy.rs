@@ -1,5 +1,6 @@
 use chrono::{DateTime, Duration, Local};
 use dioxus::prelude::*;
+use tokio::time::sleep;
 use crate::model::alarm::play_beep;
 use crate::model::buy_btc::buy_btc_market;
 use crate::model::sell_btc::sell_btc_market;
@@ -24,13 +25,16 @@ pub fn Buy() -> Element {
 
     // 开始交易时的指标
     let mut btc_starting_price: Signal<String> = use_signal(|| "-0.00".to_string());
-    let mut btc_gap_price: Signal<String> = use_signal(|| "-0.00".to_string());
+    let mut btc_buy_gap_price: Signal<String> = use_signal(|| "-0.00".to_string());
     let mut btc_buy_trigger_price: Signal<String> = use_signal(|| "-0.00".to_string());
-    let mut btc_sell_trigger_price: Signal<String> = use_signal(|| "-0.00".to_string());
+    let mut btc_sell_gap_price: Signal<String> = use_signal(|| "-0.00".to_string());
+    let mut btc_force_sell_trigger_price: Signal<String> = use_signal(|| "-0.00".to_string());
+    let mut btc_winning_sell_trigger_price: Signal<String> = use_signal(|| "-0.00".to_string());
     let mut btc_buy_qty: Signal<String> = use_signal(|| "-0.00".to_string());
     let mut btc_duration: Signal<String> = use_signal(|| "-0".to_string());
     let mut btc_ending_time: Signal<DateTime<Local>> = use_signal(|| Local::now());
     let mut btc_trade_times: Signal<String> = use_signal(|| "0".to_string());
+    let mut btc_gap_time: Signal<String> = use_signal(|| "0".to_string());
 
     // 订单信息
     let mut quote_order_qty: Signal<String> = use_signal(|| "0.00".to_string());
@@ -85,21 +89,35 @@ pub fn Buy() -> Element {
                 p { "ℹ️ 涨多少价格买入BTC（小数点后最多2位，>=0)" }
                 input {
                     class: "border p-2 rounded",
-                    value: "{btc_gap_price}",
+                    value: "{btc_buy_gap_price}",
                     oninput: move |evt| {
-                        btc_gap_price.set(evt.value());
+                        btc_buy_gap_price.set(evt.value());
                     }
                 }
-                p { "止损触发自动买入時的BTC价格" }
+                p { "止损触发自动买入時的BTC价格 (开始自动交易时的BTC价格+涨多少价格)" }
                 input {
                     class: "border p-2 rounded",
                     value: "{btc_buy_trigger_price}",
                     readonly: true,
                 }
-                p { "触发自动卖出时的BTC价格" }
+                p { "触发自动卖出时的BTC价格 (止损 强制卖出)" }
                 input {
                     class: "border p-2 rounded",
-                    value: "{btc_sell_trigger_price}",
+                    value: "{btc_force_sell_trigger_price}",
+                    readonly: true,
+                }
+                p { "ℹ️ 價格升多少即卖出BTC（小数点后最多2位，>=0)" }
+                input {
+                    class: "border p-2 rounded",
+                    value: "{btc_sell_gap_price}",
+                    oninput: move |evt| {
+                        btc_sell_gap_price.set(evt.value());
+                    }
+                }
+                p { "触发自动卖出时的BTC价格（赚钱 主动卖出）" }
+                input {
+                    class: "border p-2 rounded",
+                    value: "{btc_winning_sell_trigger_price}",
                     readonly: true,
                 }
                 p { "ℹ️ 追单USDT 金额（小数点后最多7位，应>=5 USDT)" }
@@ -117,13 +135,13 @@ pub fn Buy() -> Element {
                     value: "{quote_order_qty}",
                     readonly: true,
                 }
-                p { "ℹ️ 操作几分钟（须>=1，不可有小数）" }
+                p { "ℹ️ 操作几秒钟（须>=10，不可有小数）" }
                 input {
                     class: "border p-2 rounded",
                     value: "{btc_duration}",
                     oninput: move |evt| {
                         btc_duration.set(evt.value());
-                        btc_ending_time.set(Local::now() + Duration::minutes(btc_duration.read().parse::<i64>().unwrap_or_default()));
+                        btc_ending_time.set(Local::now() + Duration::seconds(btc_duration.read().parse::<i64>().unwrap_or_default()));
                     }
                 }
                 p { "几点几分结束 (+08:00 为北京时间)" }
@@ -143,6 +161,14 @@ pub fn Buy() -> Element {
                     class: "border p-2 rounded",
                     value: "{btc_trade_times}",
                     oninput: move |evt| btc_trade_times.set(evt.value())
+                }
+                p { "ℹ️ 卖出后多少秒重新开始（须>=1，不可有小数）" }
+                input {
+                    class: "border p-2 rounded",
+                    value: "{btc_gap_time}",
+                    oninput: move |evt| {
+                        btc_gap_time.set(evt.value());
+                    }
                 }
                 p {
                     "机器人状态："
@@ -169,10 +195,11 @@ pub fn Buy() -> Element {
                             auto_trade_buy_btc.set(true);
                             auto_trade_sell_btc.set(false);
                             btc_starting_price.set(btc_price.read().to_string());
-                            btc_buy_trigger_price.set((btc_starting_price.read().parse::<f64>().unwrap_or_default() + btc_gap_price.read().parse::<f64>().unwrap_or_default()).to_string());
-                            btc_sell_trigger_price.set((btc_starting_price.read().parse::<f64>().unwrap_or_default() - btc_gap_price.read().parse::<f64>().unwrap_or_default()).to_string());
+                            btc_buy_trigger_price.set((btc_starting_price.read().parse::<f64>().unwrap_or_default() + btc_buy_gap_price.read().parse::<f64>().unwrap_or_default()).to_string());
+                            btc_force_sell_trigger_price.set((btc_starting_price.read().parse::<f64>().unwrap_or_default() - btc_buy_gap_price.read().parse::<f64>().unwrap_or_default()).to_string());
+                            btc_winning_sell_trigger_price.set((btc_starting_price.read().parse::<f64>().unwrap_or_default() + btc_sell_gap_price.read().parse::<f64>().unwrap_or_default()).to_string());
                             let qty: f64 = quote_order_qty.read().parse::<f64>().unwrap_or_default();
-                            let price: f64 = btc_sell_trigger_price.read().parse::<f64>().unwrap_or_default();
+                            let price: f64 = btc_force_sell_trigger_price.read().parse::<f64>().unwrap_or_default();
                             let result = if price != 0.0 {
                                 (qty / price) as f64
                             } else {
@@ -180,7 +207,7 @@ pub fn Buy() -> Element {
                             };
                             // 保留5位小数
                             sell_quantity.set(format!("{:.5}", result));
-                            btc_ending_time.set(Local::now() + Duration::minutes(btc_duration.read().parse::<i64>().unwrap_or_default()));
+                            btc_ending_time.set(Local::now() + Duration::seconds(btc_duration.read().parse::<i64>().unwrap_or_default()));
                             println!("ℹ️ 第 {} 次结束时间： {}", btc_trade_times.read(), btc_ending_time.read());
                             'inner: while auto_trade_buy_btc.read().clone() || auto_trade_sell_btc.read().clone() {
                                 tokio::time::sleep(std::time::Duration::from_secs(1)).await;
@@ -192,6 +219,8 @@ pub fn Buy() -> Element {
                                             Ok(_) => {
                                                 println!("✅ 强制卖出BTC成功");
                                                 auto_trade_sell_btc.set(false);
+                                                println!("等待 {} 秒后继续...", btc_gap_time.read());
+                                                sleep(std::time::Duration::from_secs(btc_gap_time.read().parse::<u64>().unwrap_or_default())).await;
                                             },
                                             Err(e) => {
                                                 println!("❌❌❌ 强制卖出BTC失败：{}", e);
@@ -228,13 +257,17 @@ pub fn Buy() -> Element {
                                 // selling
                                 if auto_trade_sell_btc.read().clone() {
                                     println!("ℹ️ 当前价格：{}", btc_price.read().clone());
-                                    println!("ℹ️ 卖出触发价格：{}", btc_sell_trigger_price.read().clone());
-                                    if btc_price.read().clone() <= btc_sell_trigger_price.read().parse::<f64>().unwrap_or_default() {
-                                        println!("✅ 第 {} 次触发价格已到，开始强制卖出BTC", btc_trade_times.read());
+                                    println!("ℹ️ 卖出触发价格：{}", btc_force_sell_trigger_price.read().clone());
+                                    if btc_price.read().clone() <= btc_force_sell_trigger_price.read().parse::<f64>().unwrap_or_default()
+                                    ||  btc_price.read().clone() >= btc_winning_sell_trigger_price.read().parse::<f64>().unwrap_or_default()
+                                    {
+                                        println!("✅ 第 {} 次触发价格已到，开始强制卖出BTC或者达到赚够了主动卖出BTC", btc_trade_times.read());
                                         match sell_btc_market(sell_quantity.read().parse::<f64>().unwrap_or_default()).await {
                                             Ok(_) => {
                                                 println!("✅ 自动卖出BTC成功");
                                                 auto_trade_sell_btc.set(false);
+                                                println!("等待 {} 秒后继续...", btc_gap_time.read());
+                                                sleep(std::time::Duration::from_secs(btc_gap_time.read().parse::<u64>().unwrap_or_default())).await;
                                             },
                                             Err(e) => {
                                                 println!("❌❌❌ 自动卖出BTC失败：{}", e);
