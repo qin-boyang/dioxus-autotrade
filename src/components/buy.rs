@@ -238,7 +238,9 @@ pub fn Buy() -> Element {
                                 if auto_trade_buy_btc.read().clone() {
                                     println!("ℹ️ 当前价格：{}", btc_price.read().clone());
                                     println!("ℹ️ 买入触发价格：{}", btc_buy_trigger_price.read().clone());
-                                    if btc_price.read().clone() >= btc_buy_trigger_price.read().parse::<f64>().unwrap_or_default() {
+                                    if btc_price.read().clone() >= btc_buy_trigger_price.read().parse::<f64>().unwrap_or_default()
+                                    && Local::now() < (*btc_ending_time.read() - Duration::seconds(5))
+                                    {
                                         println!("✅ 第 {} 次触发价格已到，开始自动买入BTC", btc_trade_times.read());
                                         match buy_btc_market(quote_order_qty.read().parse::<f64>().unwrap_or_default()).await {
                                             Ok(_) => {
