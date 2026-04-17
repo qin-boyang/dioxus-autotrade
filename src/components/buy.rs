@@ -94,7 +94,7 @@ pub fn Buy() -> Element {
                         btc_buy_gap_price.set(evt.value());
                     }
                 }
-                p { "止损触发自动买入時的BTC价格 (开始自动交易时的BTC价格+涨多少价格)" }
+                p { "触发自动买入時的BTC价格 (开始自动交易时的BTC价格+涨多少价格)" }
                 input {
                     class: "border p-2 rounded",
                     value: "{btc_buy_trigger_price}",

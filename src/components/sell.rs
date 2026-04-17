@@ -100,7 +100,7 @@ pub fn Sell() -> Element {
                     value: "{btc_sell_trigger_price}",
                     readonly: true,
                 }
-                p { "止损触发自动买入时的BTC价格 (止损 强制买入)" }
+                p { "触发自动买入时的BTC价格 (止损 强制买入)" }
                 input {
                     class: "border p-2 rounded",
                     value: "{btc_force_buy_trigger_price}",
