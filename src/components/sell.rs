@@ -25,11 +25,16 @@ pub fn Sell() -> Element {
 
     // 开始交易时的指标
     let mut btc_starting_price: Signal<String> = use_signal(|| "-0.00".to_string());
+
     let mut btc_sell_gap_price: Signal<String> = use_signal(|| "-0.00".to_string());
     let mut btc_sell_trigger_price: Signal<String> = use_signal(|| "-0.00".to_string());
-    let mut btc_buy_gap_price: Signal<String> = use_signal(|| "-0.00".to_string());
+
+    let mut btc_force_buy_gap_price: Signal<String> = use_signal(|| "-0.00".to_string());
     let mut btc_force_buy_trigger_price: Signal<String> = use_signal(|| "-0.00".to_string());
+
+    let mut btc_winning_buy_gap_price: Signal<String> = use_signal(|| "-0.00".to_string());
     let mut btc_winning_buy_trigger_price: Signal<String> = use_signal(|| "-0.00".to_string());
+
     let mut btc_sell_qty: Signal<String> = use_signal(|| "-0.00".to_string());
     let mut btc_duration: Signal<String> = use_signal(|| "-0".to_string());
     let mut btc_ending_time: Signal<DateTime<Local>> = use_signal(|| Local::now());
@@ -100,18 +105,26 @@ pub fn Sell() -> Element {
                     value: "{btc_sell_trigger_price}",
                     readonly: true,
                 }
+                p { "ℹ️ 价格涨多少即买入 (止损 强制买入)" }
+                input {
+                    class: "border p-2 rounded",
+                    value: "{btc_force_buy_gap_price}",
+                    oninput: move |evt| {
+                        btc_force_buy_gap_price.set(evt.value());
+                    }
+                }
                 p { "触发自动买入时的BTC价格 (止损 强制买入)" }
                 input {
                     class: "border p-2 rounded",
                     value: "{btc_force_buy_trigger_price}",
                     readonly: true,
                 }
-                p { "ℹ️ 價格降多少即买入BTC（小数点后最多2位，>=0)" }
+                p { "ℹ️ 價格降多少即买入BTC（小数点后最多2位，>=0) （赚钱 主动买入）" }
                 input {
                     class: "border p-2 rounded",
-                    value: "{btc_buy_gap_price}",
+                    value: "{btc_winning_buy_gap_price}",
                     oninput: move |evt| {
-                        btc_buy_gap_price.set(evt.value());
+                        btc_winning_buy_gap_price.set(evt.value());
                     }
                 }
                 p { "触发自动买入时的BTC价格（赚钱 主动买入）" }
@@ -196,8 +209,8 @@ pub fn Sell() -> Element {
                             auto_trade_buy_btc.set(false);
                             btc_starting_price.set(btc_price.read().to_string());
                             btc_sell_trigger_price.set((btc_starting_price.read().parse::<f64>().unwrap_or_default() - btc_sell_gap_price.read().parse::<f64>().unwrap_or_default()).to_string());
-                            btc_force_buy_trigger_price.set((btc_starting_price.read().parse::<f64>().unwrap_or_default() + btc_sell_gap_price.read().parse::<f64>().unwrap_or_default()).to_string());
-                            btc_winning_buy_trigger_price.set((btc_starting_price.read().parse::<f64>().unwrap_or_default() - btc_buy_gap_price.read().parse::<f64>().unwrap_or_default()).to_string());
+                            btc_force_buy_trigger_price.set((btc_starting_price.read().parse::<f64>().unwrap_or_default() + btc_force_buy_gap_price.read().parse::<f64>().unwrap_or_default()).to_string());
+                            btc_winning_buy_trigger_price.set((btc_starting_price.read().parse::<f64>().unwrap_or_default() - btc_winning_buy_gap_price.read().parse::<f64>().unwrap_or_default()).to_string());
                             let qty: f64 = sell_quantity.read().parse::<f64>().unwrap_or_default();
                             let price: f64 = btc_force_buy_trigger_price.read().parse::<f64>().unwrap_or_default();
                             let result = if price != 0.0 {
