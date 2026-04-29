@@ -19,11 +19,13 @@ pub(crate) async fn get_balances() -> Result<(f64, f64, f64), Box<dyn std::error
     println!("🦀 Getting USDT balance...");
 
     let app_config = CONFIG.read();
+    println!("🦀 API base_url: {}", app_config.base_url);
 
     let client = reqwest::Client::new();
     let timestamp = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
     let query = format!("timestamp={}", timestamp);
     let signature = sign_request(&query, &app_config.api_secret);
+    println!("🦀 API signature: {}", signature);
 
     let url = format!("{}/api/v3/account?{}&signature={}", &app_config.base_url, query, signature);
     let mut headers = HeaderMap::new();
