@@ -28,6 +28,7 @@ pub(crate) async fn get_balances() -> Result<(f64, f64, f64), Box<dyn std::error
     println!("🦀 API signature: {}", signature);
 
     let url = format!("{}/api/v3/account?{}&signature={}", &app_config.base_url, query, signature);
+    println!("🦀 url: {}", url);
     let mut headers = HeaderMap::new();
     headers.insert("X-MBX-APIKEY", HeaderValue::from_str(&app_config.api_key).unwrap());
     let res = client.get(url).headers(headers).send().await?;
@@ -40,6 +41,13 @@ pub(crate) async fn get_balances() -> Result<(f64, f64, f64), Box<dyn std::error
     }
     println!("✅ Getting USDT balance success");
     let account: AccountInfo = res.json().await?;
+    account.balances.iter().for_each(|b| {
+        if b.free.parse::<f64>().unwrap() == 0.0 {
+            println!("❌ asset {} : free {}", b.asset, b.free);
+        } else {
+            println!("✅ asset {} : free {}", b.asset, b.free);
+        }
+    });
 
     let usdt = account.balances.iter()
         .find(|b| b.asset == "USDT")

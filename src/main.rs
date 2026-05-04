@@ -33,6 +33,12 @@ const MAIN_CSS: Asset = asset!("/assets/main.css");
 const TAILWIND_CSS: Asset = asset!("/assets/tailwind.css");
 
 fn main() {
+    // Force set the environment variable programmatically BEFORE anything else
+    std::env::set_var("RUST_LOG", "info,h2=warn,hyper=warn,reqwest=warn,rustls=warn");
+
+    // Use the environment variable we just set
+    env_logger::init();
+
     launch(App);
 }
 
