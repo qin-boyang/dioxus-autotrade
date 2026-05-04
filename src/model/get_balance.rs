@@ -43,9 +43,9 @@ pub(crate) async fn get_balances() -> Result<(f64, f64, f64), Box<dyn std::error
     let account: AccountInfo = res.json().await?;
     account.balances.iter().for_each(|b| {
         if b.free.parse::<f64>().unwrap() == 0.0 {
-            println!("❌ asset {} : free {}", b.asset, b.free);
+            println!("❌ asset {:?}", b);
         } else {
-            println!("✅ asset {} : free {}", b.asset, b.free);
+            println!("✅ asset {:?}", b);
         }
     });
 
